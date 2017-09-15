@@ -105,10 +105,40 @@ export draw!
 draw!(library::Library) = pop!(library.cards)
 ###
 
+### PlayArea
+# It's where the cards are played -- each suite has up to one of each value
+export PlayArea
+mutable struct PlayArea
+    stacks::Array{Pair{Suite, Int},1}
+    score::Int
+end
+PlayArea() = PlayArea([Pair(Suite(s), 0) for s in possible_colors], 0)
+function Base.show(io::IO, p::PlayArea)
+    for s in p.stacks
+        println(s.first, ": ", s.second)
+    end
+    println("Current score: ", p.score)
+end
+###
 
+### GameState
 
+# TODO: This needs to be rewritten to operation on a GameState
+export attempt_to_play
+function attempt_to_play(p::PlayArea, c::Card)
+    #Find the right stack
+    si = find([c.suite .== s.first for s in p.stacks])[1]
+    #Is this a valid card to play?
+    if p.stacks[si].second == c.value - 1
+        p.stacks[si].second = p.stacks[si].second + 1
+        p.score = p.score + 1
+        return true # Play was successful
+    else
+        return false # No dice, need to reduce lives in gamestate
+    end
+end
 
-
+###
 
 
 
