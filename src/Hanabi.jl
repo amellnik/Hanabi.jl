@@ -69,6 +69,7 @@ mutable struct ObservedCard
     suite::Union{Suite, Null}
     value::Union{Int, Null}
 end
+
 Base.show(io::IO, c::ObservedCard) = print(io, isnull(c.suite) ? "?" : c.suite, " ", isnull(c.value) ? "?" : c.value)
 
 export observe
@@ -81,6 +82,22 @@ export Hand
 mutable struct Hand
     cards::Array{Card, 1}
 end
+
+# Default constructor is an empty hand
+Hand() = Hand(Card[])
+
+# Default display only says how many cards are in the hand.
+Base.show(io::IO, h::Hand) = println(io, "Hand with ", length(h.cards), " cards")
+
+# A method for the other players to see exactly what's in the hand
+export hand_contents
+function hand_contents(h::Hand)
+    return h.cards
+end
+
+# What the owner of the hand knows about it
+observe(h::Hand) = ObservedCard[observe(c) for c in h.cards]
+
 ###
 
 ### Library type
@@ -100,9 +117,10 @@ function Library()
     end
     return Library(shuffle(cards))
 end
-
+# draw! removes cards from the library and returns the drawn card
 export draw!
 draw!(library::Library) = pop!(library.cards)
+Base.show(io::IO, l::Library) = println(io, "Library has ", length(l.cards), " cards")
 ###
 
 ### PlayArea
@@ -123,12 +141,51 @@ end
 
 ### GameState
 
+export GameState
+"""
+A `GameState` consists of a `Library`, a `PlayArea` (which includes the current score), an array of `Hand`s, an integer which tracks which hand corresponds to the current player, an integer that tracks the number of hints remaining, and an integer that tracks the number of lives remaining.
+"""
+mutable struct GameState
+    library::Library
+    play_area::PlayArea
+    hands::Array{Hand, 1}
+    current_player::Integer
+    hints::Integer
+    lives::Integer
+end
+function GameState(nplayers::Integer) # Start a new game
+    # First shuffle the cards to make a library
+    lib = Library()
+    # For three or less players each person gets 5 cards, 4 otherwise
+    nplayers <= 3 ? ncards = 5 : ncards = 4
+    hands = Hand[]
+    # Draw cards from the deck and deal out to players
+    for p in 1:nplayers
+        push!(hands, Hand(Card[draw!(lib) for i in 1:ncards]))
+    end
+    GameState(lib, PlayArea(), hands, 1, 8, 3)
+end
+function Base.show(io::IO, gs::GameState)
+    show(io, gs.library)
+    println(io, "Current player: ", gs.current_player)
+    for (i, h) in enumerate(gs.hands)
+        print(io, "Player ", i, ": ")
+        show(io, h)
+    end
+    println(io, "Hints remaining: ", gs.hints)
+    println(io, "Lives remaining: ", gs.lives)
+    show(io, gs.play_area)
+end
+
+
+
+
 # TODO: This needs to be rewritten to operation on a GameState
 export attempt_to_play
 function attempt_to_play(p::PlayArea, c::Card)
-    #Find the right stack
+    # Find the right stack
     si = find([c.suite .== s.first for s in p.stacks])[1]
-    #Is this a valid card to play?
+    # Is this a valid card to play?
     if p.stacks[si].second == c.value - 1
         p.stacks[si].second = p.stacks[si].second + 1
         p.score = p.score + 1
@@ -137,6 +194,8 @@ function attempt_to_play(p::PlayArea, c::Card)
         return false # No dice, need to reduce lives in gamestate
     end
 end
+
+# TODO: Need hint and discard play action methods
 
 ###
 
