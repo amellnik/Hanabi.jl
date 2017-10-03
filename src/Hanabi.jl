@@ -4,6 +4,9 @@ using Reexport
 @reexport using Nulls
 
 
+### Overall TODO:
+# Don't export internal methods
+
 ### Suite type
 export Suite
 mutable struct Suite
@@ -90,10 +93,10 @@ Hand() = Hand(Card[])
 Base.show(io::IO, h::Hand) = println(io, "Hand with ", length(h.cards), " cards")
 
 # A method for the other players to see exactly what's in the hand
-export hand_contents
-function hand_contents(h::Hand)
-    return h.cards
-end
+# export hand_contents
+# function hand_contents(h::Hand)
+#     return h.cards
+# end
 
 # What the owner of the hand knows about it
 observe(h::Hand) = ObservedCard[observe(c) for c in h.cards]
@@ -102,7 +105,6 @@ observe(h::Hand) = ObservedCard[observe(c) for c in h.cards]
 
 ### Library type
 # Another fancy array of cards
-export Library
 mutable struct Library
     cards::Array{Card, 1}
 end
@@ -118,7 +120,6 @@ function Library()
     return Library(shuffle(cards))
 end
 # draw! removes cards from the library and returns the drawn card
-export draw!
 draw!(library::Library) = pop!(library.cards)
 Base.show(io::IO, l::Library) = println(io, "Library has ", length(l.cards), " cards")
 ###
@@ -193,10 +194,6 @@ function Base.show(io::IO, gs::GameState)
     show(io, gs.play_area)
 end
 
-
-
-
-# TODO: This needs a method to
 export attempt_to_play!
 """
     attempt_to_play!(gs::GameState, card_index::Integer)
@@ -232,6 +229,7 @@ function attempt_to_play!(gs::GameState, card_index::Integer)
     return gs
 end
 
+# Internal convenience method for testing
 function attempt_to_play!(p::PlayArea, c::Card)
     # Find the right stack
     # Note that we need to compare the color or value of the suites,
@@ -244,6 +242,29 @@ function attempt_to_play!(p::PlayArea, c::Card)
         return true # Play was successful
     else
         return false # No dice, need to reduce lives in gamestate
+    end
+end
+
+export observe_active_hand
+"""
+    observe_active_hand(gs::GameState)
+
+Returns what the active player knows about their own hand.
+"""
+function observe_active_hand(gs::GameState)
+    observe(gs.hands[gs.current_player])
+end
+
+export other_players_hands
+"""
+    other_players_hands(gs::GameState)
+
+What the other players are holding in their hands.
+"""
+function other_players_hands(gs::GameState)
+    for i in 0:length(gs.hands)-2
+        println("Player ", mod(gs.current_player+i,length(gs.hands)) + 1, " is holding:")
+        println(gs.hands[mod(gs.current_player+i,length(gs.hands))+1].cards)
     end
 end
 
